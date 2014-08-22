@@ -98,17 +98,19 @@ dtseries_file=${ResultsFolder}/${LevelOnefMRIName}/${LevelOnefMRIName}_Atlas"$Sm
 fake_nifti_file=${ResultsFolder}/${LevelOnefMRIName}/${LevelOnefMRIName}_Atlas"$SmoothingString"_FAKENIFTI.nii.gz
 fake_nifti_file_filtered=${ResultsFolder}/${LevelOnefMRIName}/${LevelOnefMRIName}_Atlas"$SmoothingString"_FAKENIFTI_filtered.nii.gz
 temporal_filter_dtseries_file=${ResultsFolder}/${LevelOnefMRIName}/${LevelOnefMRIName}_Atlas"$TemporalFilterString""$SmoothingString".dtseries.nii 
+temp_mean_file=${ResultsFolder}/${LevelOnefMRIName}/${LevelOnefMRIName}_temp_mean.nii.gz
 
 ${CARET7DIR}/wb_command -cifti-convert -to-nifti ${dtseries_file} ${fake_nifti_file}
 
-fslmaths ${fake_nifti_file} -Tmean tmp_mean.nii.gz
+fslmaths ${fake_nifti_file} -Tmean ${temp_mean_file}
 fslmaths ${fake_nifti_file} -bptf `echo "0.5 * $TemporalFilter / $TR_vol" | bc -l` 0 ${fake_nifti_file_filtered}
-fslmaths ${fake_nifti_file_filtered} -Tmean -mul -1 -add ${fake_nifti_file_filtered} -add tmp_mean.nii.gz ${fake_nifti_file_filtered}
+fslmaths ${fake_nifti_file_filtered} -Tmean -mul -1 -add ${fake_nifti_file_filtered} -add ${temp_mean_file} ${fake_nifti_file_filtered}
 
 ${CARET7DIR}/wb_command -cifti-convert -from-nifti ${fake_nifti_file_filtered} ${dtseries_file} ${temporal_filter_dtseries_file}
 
 rm ${fake_nifti_file}
 rm ${fake_nifti_file_filtered}
+rm ${temp_mean_file}
 
 #Split into surface and volume
 log_Msg "Split into surface and volume"
