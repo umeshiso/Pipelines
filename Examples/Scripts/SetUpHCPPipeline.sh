@@ -17,8 +17,50 @@ export FSL_DIR="${FSLDIR}"
 #. ${FREESURFER_HOME}/SetUpFreeSurfer.sh > /dev/null 2>&1
 
 # Set up specific environment variables for the HCP Pipeline
-export HCPPIPEDIR=${HOME}/projects/Pipelines
-export CARET7DIR=${HOME}/tools/workbench/bin_rh_linux64
+
+### CfN modified
+
+#export HCPPIPEDIR=${HOME}/projects/Pipelines
+export HCPPIPEDIR=/data/jet/grosspeople/HCP/hcpPipeline/Pipelines-3.4.0/
+#export CARET7DIR=${HOME}/workbench/bin_linux64
+export CARET7DIR=${CFNAPPS}/workbench/workbench-1.0/bin_rh_linux64/
+
+export FSLDIR=$CFNAPPS/fsl/5.0.6
+if [ -d "$FSLDIR" ]; then
+  source ${FSLDIR}/etc/fslconf/fsl.sh
+else
+  echo " ERROR: Can't find FSL at $FSLDIR "
+fi
+PATH=${FSLDIR}/bin:${PATH}
+
+# Freesurfer uses its own FSL_DIR variable?!
+export FSL_DIR=$FSLDIR
+
+## Freesurfer
+#export FREESURFER_HOME=$CFNAPPS/freesurfer/5.3.0
+#Use 5.3.0-HCP for use with HCP Pipelines 3.4.0
+export FREESURFER_HOME=$CFNAPPS/freesurfer/5.3.0-HCP
+
+if [ -f "$FREESURFER_HOME/SetUpFreeSurfer.sh" ]; then
+  source $FREESURFER_HOME/SetUpFreeSurfer.sh
+else
+  echo " ERROR: Can't find FreeSurfer at $FREESURFER_HOME "
+fi
+
+# python
+# version required for HCP pipelines. Installed in parallel with system's version 2.6.6
+export PyPATH=$CFNAPPS/python/Python-2.7.9/bin/
+# Put this BEFORE /usr/bin so we don't get the system python.
+PATH=$PyPATH:$PATH
+
+
+# Run custom script to check env settings for fsl, freesurfer and python
+${HCPPIPEDIR}/VerifyHCPpipelinesEnvironment.sh
+
+### end CfN modified
+
+export HCPPIPEDIR=/data/jet/grosspeople/HCP/CurrentPipeline/Pipelines
+export CARET7DIR=${CFNAPPS}/workbench/workbench-1.0/bin_rh_linux64/
 
 export HCPPIPEDIR_Templates=${HCPPIPEDIR}/global/templates
 export HCPPIPEDIR_Bin=${HCPPIPEDIR}/global/binaries

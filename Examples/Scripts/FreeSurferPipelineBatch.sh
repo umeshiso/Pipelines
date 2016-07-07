@@ -39,16 +39,38 @@ get_batch_options() {
 
 get_batch_options $@
 
-StudyFolder="${HOME}/projects/Pipelines_ExampleData" #Location of Subject folders (named by subjectID)
+StudyFolder="/data/jet/grosspeople/HCP/CurrentPipeline/subjectsNii" #Location of Subject folders (named by subjectID)
 Subjlist="100307" #Space delimited list of subject IDs
-EnvironmentScript="${HOME}/projects/Pipelines/Examples/Scripts/SetUpHCPPipeline.sh" #Pipeline environment script
+EnvironmentScript="${HCPPIPEDIR}/Examples/Scripts/SetUpHCPPipeline.sh" #Pipeline environment script
+
+# Require a command line input or print usage and exit
+
+USAGE="
+
+  $0 --StudyFolder=/path/to/data --Subjlist=\"subject1 subject2\" --runlocal
+
+  This script is for running HCP Lifespan pilot data obtained from ConnectomeDB. It will need to be modified for running Penn Lifespan data.
+
+  --StudyFolder : path to data directory. Subject data lives inside here in /path/to/data/subjectID/ directories
+
+  --Subjlist : List of subjects, separated by spaces
+
+  --runlocal : You should probably qsub a script that calls this script with --runlocal. Otherwise FSL's qsub gets called, which might not work
+
+"
 
 if [ -n "${command_line_specified_study_folder}" ]; then
     StudyFolder="${command_line_specified_study_folder}"
+else
+  echo "$USAGE"
+  exit 1
 fi
 
 if [ -n "${command_line_specified_subj_list}" ]; then
     Subjlist="${command_line_specified_subj_list}"
+else
+  echo "$USAGE"
+  exit 1
 fi
 
 # Requirements for this script
@@ -61,9 +83,11 @@ fi
 # Log the originating call
 echo "$@"
 
+# JSP: long.q was not commented out in our last version of the pipeline. Should it be?
+# If "run local" option is used, this is irrelevant; only matters if FSL submits the qsub job.
 #if [ X$SGE_ROOT != X ] ; then
 #    QUEUE="-q long.q"
-    QUEUE="-q hcp_priority.q"
+#    QUEUE="-q hcp_priority.q"
 #fi
 
 PRINTCOM=""
@@ -101,7 +125,7 @@ for Subject in $Subjlist ; do
       --t1="$T1wImage" \
       --t1brain="$T1wImageBrain" \
       --t2="$T2wImage" \
-      --printcom=$PRINTCOM
+      --printcom=$PRINTCOM 
       
   # The following lines are used for interactive debugging to set the positional parameters: $1 $2 $3 ...
 

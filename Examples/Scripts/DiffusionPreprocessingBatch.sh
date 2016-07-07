@@ -41,14 +41,35 @@ get_batch_options $@
 
 StudyFolder="${HOME}/projects/Pipelines_ExampleData" #Location of Subject folders (named by subjectID)
 Subjlist="100307" #Space delimited list of subject IDs
-EnvironmentScript="${HOME}/projects/Pipelines/Examples/Scripts/SetUpHCPPipeline.sh" #Pipeline environment script
+EnvironmentScript="${HCPPIPEDIR}/Examples/Scripts/SetUpHCPPipeline.sh" #Pipeline environment script
+
+# Usage text. Require a command line input or print usage and exit
+USAGE="
+
+  $0 --StudyFolder=/path/to/data --Subjlist=\"subject1 subject2\" --runlocal
+
+  This script is for running Lifespan data from Penn's Prisma
+
+  --StudyFolder : path to data directory. Subject data lives inside here in /path/to/data/subjectID/ directories
+
+  --Subjlist : List of subjects, separated by spaces
+
+  --runlocal : You should probably qsub a script that calls this script with --runlocal. Otherwise FSL's qsub gets called, which might not work
+
+"
 
 if [ -n "${command_line_specified_study_folder}" ]; then
     StudyFolder="${command_line_specified_study_folder}"
+else
+  echo "$USAGE"
+  exit 1
 fi
 
 if [ -n "${command_line_specified_subj_list}" ]; then
     Subjlist="${command_line_specified_subj_list}"
+else
+  echo "$USAGE"
+  exit 1
 fi
 
 # Requirements for this script
@@ -64,7 +85,7 @@ echo "$@"
 #Assume that submission nodes have OPENMP enabled (needed for eddy - at least 8 cores suggested for HCP data)
 #if [ X$SGE_ROOT != X ] ; then
 #    QUEUE="-q verylong.q"
-    QUEUE="-q hcp_priority.q"
+#    QUEUE="-q hcp_priority.q"
 #fi
 
 PRINTCOM=""
@@ -78,12 +99,12 @@ PRINTCOM=""
 #Scripts called by this script do NOT assume anything about the form of the input names or paths.
 #This batch script assumes the HCP raw data naming convention, e.g.
 
-#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_DWI_dir95_RL.nii.gz
-#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_DWI_dir96_RL.nii.gz
-#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_DWI_dir97_RL.nii.gz
-#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_DWI_dir95_LR.nii.gz
-#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_DWI_dir96_LR.nii.gz
-#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_DWI_dir97_LR.nii.gz
+#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_dMRI_dir98_AP.nii.gz
+#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_dMRI_dir99_AP.nii.gz
+#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_dMRI_dir97_AP.nii.gz
+#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_dMRI_dir98_PA.nii.gz
+#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_dMRI_dir99_PA.nii.gz
+#	${StudyFolder}/${Subject}/unprocessed/3T/Diffusion/${SubjectID}_3T_dMRI_dir97_PA.nii.gz
 
 #Change Scan Settings: Echo Spacing and PEDir to match your images
 #These are set to match the HCP Protocol by default
@@ -101,20 +122,22 @@ for Subject in $Subjlist ; do
   SubjectID="$Subject" #Subject ID Name
   RawDataDir="$StudyFolder/$SubjectID/unprocessed/3T/Diffusion" #Folder where unprocessed diffusion data are
 
-  # Data with positive Phase encoding direction. Up to N>=1 series (here N=3), separated by @. (LR in HCP data, AP in 7T HCP data)
-  PosData="${RawDataDir}/${SubjectID}_3T_DWI_dir95_RL.nii.gz@${RawDataDir}/${SubjectID}_3T_DWI_dir96_RL.nii.gz@${RawDataDir}/${SubjectID}_3T_DWI_dir97_RL.nii.gz"
+  # Data with positive Phase encoding direction. Up to N>=1 series (here N=3), separated by @. (AP in HCP data, AP in 7T HCP data)
+  PosData="${RawDataDir}/${SubjectID}_3T_dMRI_dir98_AP.nii.gz@${RawDataDir}/${SubjectID}_3T_dMRI_dir99_AP.nii.gz"
 
-  # Data with negative Phase encoding direction. Up to N>=1 series (here N=3), separated by @. (RL in HCP data, PA in 7T HCP data)
-  # If corresponding series is missing (e.g. 2 RL series and 1 LR) use EMPTY.
-  NegData="${RawDataDir}/${SubjectID}_3T_DWI_dir95_LR.nii.gz@${RawDataDir}/${SubjectID}_3T_DWI_dir96_LR.nii.gz@${RawDataDir}/${SubjectID}_3T_DWI_dir97_LR.nii.gz"
+  # Data with negative Phase encoding direction. Up to N>=1 series (here N=3), separated by @. (PA in HCP data, PA in 7T HCP data)
+  # If corresponding series is missing (e.g. 2 AP series and 1 PA) use EMPTY.
+  NegData="${RawDataDir}/${SubjectID}_3T_dMRI_dir98_PA.nii.gz@${RawDataDir}/${SubjectID}_3T_dMRI_dir99_PA.nii.gz"
 
-  #Scan Setings
+  #Scan Settings
+  # JSP: Set this to NONE? If we're using topup, shouldn't be necessary.
+
   EchoSpacing=0.78 #Echo Spacing or Dwelltime of dMRI image, set to NONE if not used. Dwelltime = 1/(BandwidthPerPixelPhaseEncode * # of phase encoding samples): DICOM field (0019,1028) = BandwidthPerPixelPhaseEncode, DICOM field (0051,100b) AcquisitionMatrixText first value (# of phase encoding samples).  On Siemens, iPAT/GRAPPA factors have already been accounted for.
-  PEdir=1 #Use 1 for Left-Right Phase Encoding, 2 for Anterior-Posterior
+  PEdir=2 #Use 1 for Left-Right Phase Encoding, 2 for Anterior-Posterior
 
   #Config Settings
-  # Gdcoeffs="${HCPPIPEDIR_Config}/coeff_SC72C_Skyra.grad" #Coefficients that describe spatial variations of the scanner gradients. Use NONE if not available.
-  Gdcoeffs="NONE" # Set to NONE to skip gradient distortion correction
+   Gdcoeffs="${HCPPIPEDIR_Config}/coeff.grad" #Coefficients that describe spatial variations of the scanner gradients. Use NONE if not available.
+  #Gdcoeffs="NONE" # Set to NONE to skip gradient distortion correction
 
   if [ -n "${command_line_specified_run_local}" ] ; then
       echo "About to run ${HCPPIPEDIR}/DiffusionPreprocessing/DiffPreprocPipeline.sh"
